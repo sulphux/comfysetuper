@@ -1,4 +1,4 @@
-#!/bin/bash
+﻿#!/bin/bash
 # =============================================================================
 # ComfyUI + Trellis2 — RunPod Installer
 # Based on ComfyUI-Easy-Install by Tavris1 / VenimK (MAC-Linux branch)
