@@ -307,20 +307,28 @@ fi
 EMBEDDED_PYTHON="$VENV_DIR/bin/python"
 cd "$COMFY_DIR"
 
-# Lightweight runtime dependency check.
-# Full requirements sync on every start can pull huge CUDA wheels into container
-# temp/cache and fail on small container disks.
-log "${YELLOW}Ensuring runtime deps (alembic/sqlalchemy)...${RESET}"
-if ! "$EMBEDDED_PYTHON" -m pip install \
-    alembic sqlalchemy \
-    --disable-pip-version-check \
-    --root-user-action=ignore \
-    --no-cache-dir \
-    >> "$LOG" 2>&1; then
-    log "${RED}✗ Failed to install runtime deps. Check: $LOG${RESET}"
-    exit 1
+# Lightweight core dependency sync.
+# Installs latest ComfyUI python deps while excluding torch packages to avoid
+# multi-GB CUDA wheel downloads/reinstalls on startup.
+if [ -f "$COMFY_DIR/requirements.txt" ]; then
+    mkdir -p "$WORKSPACE/.tmp" "$WORKSPACE/.pip-cache"
+    CORE_REQ="$WORKSPACE/.comfy_core_requirements.txt"
+    grep -viE "^(torch|torchvision|torchaudio)([<>=!~].*)?$" \
+        "$COMFY_DIR/requirements.txt" > "$CORE_REQ"
+    log "${YELLOW}Syncing ComfyUI core deps (no torch reinstall)...${RESET}"
+    if ! TMPDIR="$WORKSPACE/.tmp" PIP_CACHE_DIR="$WORKSPACE/.pip-cache" \
+        "$EMBEDDED_PYTHON" -m pip install \
+        -r "$CORE_REQ" \
+        --disable-pip-version-check \
+        --root-user-action=ignore \
+        >> "$LOG" 2>&1; then
+        log "${RED}✗ Failed to sync core deps. Check: $LOG${RESET}"
+        exit 1
+    fi
+    ok "Core deps ready"
+else
+    warn "ComfyUI requirements.txt missing at $COMFY_DIR"
 fi
-ok "Runtime deps ready"
 
 # Optional full sync (off by default): COMFY_FULL_REQ_SYNC=1 ./start.sh
 if [ "${COMFY_FULL_REQ_SYNC:-0}" = "1" ] && [ -f "$COMFY_DIR/requirements.txt" ]; then
