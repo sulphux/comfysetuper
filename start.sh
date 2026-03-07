@@ -1,4 +1,4 @@
-﻿#!/bin/bash
+#!/bin/bash
 # =============================================================================
 # ComfyUI + Trellis2 — RunPod Installer
 # Based on ComfyUI-Easy-Install by Tavris1 / VenimK (MAC-Linux branch)
@@ -158,6 +158,7 @@ if [ ! -f "$INSTALL_FLAG" ]; then
     $EMBEDDED_PYTHON -m uv pip install av==16.0.1          $UV_ARGS
     $EMBEDDED_PYTHON -m uv pip install pygit2              $UV_ARGS
     $EMBEDDED_PYTHON -m uv pip install flet                $UV_ARGS
+    $EMBEDDED_PYTHON -m uv pip install sqlalchemy          $UV_ARGS
     $EMBEDDED_PYTHON -m uv pip install "huggingface_hub[cli]" $UV_ARGS
     ok "Shared packages done"
 
