@@ -48,7 +48,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG="$WORKSPACE/comfy_setup.log"
 
 # Bump this string to force reinstall after major changes
-INSTALL_FLAG="$WORKSPACE/.comfy_installed_v2"
+INSTALL_FLAG="$WORKSPACE/.comfy_installed_v3"
 
 # ── pip / uv args (same as CEI) ───────────────────────────────────────────────
 PIP_ARGS="--no-cache-dir --no-warn-script-location --timeout=120 --retries 3 --progress-bar on --root-user-action=ignore"
@@ -89,6 +89,8 @@ get_node() {
 if [ ! -f "$INSTALL_FLAG" ]; then
 
     START_TIME=$(date +%s)
+    # Clean previous (possibly broken) install before fresh setup
+    rm -rf "$INSTALL_DIR"
     mkdir -p "$INSTALL_DIR" "$WORKSPACE"
 
     log ""
@@ -137,11 +139,11 @@ if [ ! -f "$INSTALL_FLAG" ]; then
     UV_ARGS="$UV_ARGS --python $EMBEDDED_PYTHON"
     ok "uv installed"
 
-    # ── 5. PyTorch 2.9.1 + CUDA 13.0 (matches CEI) ───────────────────────────
-    log "${YELLOW}[2/7]${RESET} Installing PyTorch 2.9.1 (CUDA 13.0)..."
+    # ── 5. PyTorch 2.7.0 + CUDA 12.4 (matches RunPod template cuda12.4.1) ───────
+    log "${YELLOW}[2/7]${RESET} Installing PyTorch 2.7.0 (CUDA 12.4)..."
     $EMBEDDED_PYTHON -m uv pip install \
-        torch==2.9.1 torchvision==0.24.1 torchaudio==2.9.1 \
-        --index-url https://download.pytorch.org/whl/cu130 \
+        torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 \
+        --index-url https://download.pytorch.org/whl/cu124 \
         $UV_ARGS
     ok "PyTorch $($EMBEDDED_PYTHON -c 'import torch; print(torch.__version__)')"
 
@@ -201,10 +203,10 @@ if [ ! -f "$INSTALL_FLAG" ]; then
     git clone --quiet https://github.com/visualbruno/ComfyUI-Trellis2.git \
         "$CUSTOM_NODES_DIR/ComfyUI-Trellis2"
 
-    # Custom wheels for Torch 2.9.1 / Python 3.12 / Linux
-    # Includes: cumesh, nvdiffrast, nvdiffrec_render, flex_gemm, o_voxel
-    WHEELS_DIR="$CUSTOM_NODES_DIR/ComfyUI-Trellis2/wheels/Linux/Torch291"
-    log "  Installing Trellis2 CUDA extension wheels (Torch291/cp312)..."
+    # Custom wheels for Torch 2.7.0 / Python 3.12 / Linux
+    # Includes: cumesh, nvdiffrast, flex_gemm, o_voxel
+    WHEELS_DIR="$CUSTOM_NODES_DIR/ComfyUI-Trellis2/wheels/Linux/Torch270"
+    log "  Installing Trellis2 CUDA extension wheels (Torch270/cp312)..."
     $EMBEDDED_PYTHON -m uv pip install "$WHEELS_DIR"/*.whl $UV_ARGS
 
     # Trellis2 pip requirements (meshlib, pymeshlab, open3d, rembg, etc.)
