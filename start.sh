@@ -307,22 +307,35 @@ fi
 EMBEDDED_PYTHON="$VENV_DIR/bin/python"
 cd "$COMFY_DIR"
 
-# Keep existing installs in sync with latest ComfyUI runtime deps
-# (e.g. alembic/sqlalchemy required by newer ComfyUI releases).
-log "${YELLOW}Syncing ComfyUI requirements before start...${RESET}"
-if [ -f "$COMFY_DIR/requirements.txt" ]; then
-    if ! "$EMBEDDED_PYTHON" -m pip install \
+# Lightweight runtime dependency check.
+# Full requirements sync on every start can pull huge CUDA wheels into container
+# temp/cache and fail on small container disks.
+log "${YELLOW}Ensuring runtime deps (alembic/sqlalchemy)...${RESET}"
+if ! "$EMBEDDED_PYTHON" -m pip install \
+    alembic sqlalchemy \
+    --disable-pip-version-check \
+    --root-user-action=ignore \
+    --no-cache-dir \
+    >> "$LOG" 2>&1; then
+    log "${RED}✗ Failed to install runtime deps. Check: $LOG${RESET}"
+    exit 1
+fi
+ok "Runtime deps ready"
+
+# Optional full sync (off by default): COMFY_FULL_REQ_SYNC=1 ./start.sh
+if [ "${COMFY_FULL_REQ_SYNC:-0}" = "1" ] && [ -f "$COMFY_DIR/requirements.txt" ]; then
+    mkdir -p "$WORKSPACE/.tmp" "$WORKSPACE/.pip-cache"
+    log "${YELLOW}Full requirements sync enabled (COMFY_FULL_REQ_SYNC=1)${RESET}"
+    if ! TMPDIR="$WORKSPACE/.tmp" PIP_CACHE_DIR="$WORKSPACE/.pip-cache" \
+        "$EMBEDDED_PYTHON" -m pip install \
         -r "$COMFY_DIR/requirements.txt" \
         --disable-pip-version-check \
         --root-user-action=ignore \
-        --no-cache-dir \
         >> "$LOG" 2>&1; then
-        log "${RED}✗ Failed to sync ComfyUI requirements. Check: $LOG${RESET}"
+        log "${RED}✗ Full requirements sync failed. Check: $LOG${RESET}"
         exit 1
     fi
     ok "ComfyUI requirements synced"
-else
-    warn "ComfyUI requirements.txt missing at $COMFY_DIR"
 fi
 
 log ""
@@ -330,7 +343,7 @@ log "${GREEN}Starting ComfyUI on 0.0.0.0:8188${RESET}"
 log "Access: RunPod → Connect → HTTP Service → Port 8188"
 log "Log: $LOG"
 
-exec $EMBEDDED_PYTHON main.py \
+exec "$EMBEDDED_PYTHON" main.py \
     --listen 0.0.0.0 \
     --port 8188 \
     2>&1 | tee -a "$LOG"
