@@ -63,8 +63,8 @@ The repo includes `start.sh` — a bash auto-installer targeting RunPod with an 
 
 **What it installs on first run:**
 - Python 3.12 (required — custom wheels are `cp312` only)
-- PyTorch 2.7.0 + CUDA 12.8
-- ComfyUI + 4 custom node repos
+- PyTorch 2.7.0 + CUDA 12.4 wheels
+- ComfyUI + custom node stack (CEI-style list + Trellis2/Hi3DGen)
 - Custom C++ wheels from `wheels/Linux/Torch270/` (cumesh, nvdiffrast, flex_gemm, o_voxel)
 - Models: `microsoft/TRELLIS.2-4B`, `facebook/dinov3-vitl16-pretrain-lvd1689m`, `microsoft/TRELLIS-image-large`
 
@@ -74,3 +74,10 @@ The repo includes `start.sh` — a bash auto-installer targeting RunPod with an 
 - Network Volume ≥50 GB mounted at `/workspace`
 
 **Critical constraint:** The Linux wheels in this repo are `cp312` only. Any Python version other than 3.12 will fail at the wheel install step.
+
+## Local Docker/WSL test mode
+
+- Use `Dockerfile` + `docker-compose.yml` from repo root to run an Ubuntu 22.04 GPU container.
+- Start with `docker compose up -d --build` and enter with `docker exec -it comfy-test bash`.
+- Use `/workspace` as persistent volume inside container (mirrors RunPod workflow).
+- Follow `AGENT_INSTRUCTIONS.txt` for the exact validation sequence.

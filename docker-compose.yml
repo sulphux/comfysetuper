@@ -1,0 +1,29 @@
+services:
+  comfy-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: comfy-test
+    working_dir: /workspace
+    stdin_open: true
+    tty: true
+    gpus: all
+    shm_size: "16gb"
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    volumes:
+      - comfy_workspace:/workspace
+      - ./:/seed-repo:ro
+    command: >
+      bash -lc '
+      if [ ! -d /workspace/comfysetuper/.git ]; then
+        cp -a /seed-repo /workspace/comfysetuper;
+        chmod -R u+rwX /workspace/comfysetuper;
+      fi;
+      echo "Container ready.";
+      echo "Run: cd /workspace/comfysetuper && ./start.sh";
+      exec bash'
+
+volumes:
+  comfy_workspace:

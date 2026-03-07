@@ -1,0 +1,39 @@
+Goal: test the RunPod-style installer locally in Docker/WSL with GPU access.
+
+1) Start container
+   - From host in this repo:
+     docker compose up -d --build
+     docker exec -it comfy-test bash
+
+2) Verify GPU visibility inside container
+   - nvidia-smi
+   - If this fails, stop here and fix Docker GPU passthrough first.
+
+3) Prepare environment
+   - export HF_TOKEN="<your_huggingface_token>"
+   - cd /workspace/comfysetuper
+   - git pull
+
+4) Run installer
+   - ./start.sh
+
+5) Validate startup
+   - Check for line: "Starting ComfyUI on 0.0.0.0:8188"
+   - If failed, inspect:
+     tail -n 200 /workspace/comfy_setup.log
+
+6) Restart test (persistence check)
+   - Exit container, then:
+     docker compose restart comfy-test
+     docker exec -it comfy-test bash
+   - cd /workspace/comfysetuper && ./start.sh
+   - Expected: no full reinstall, fast startup path.
+
+7) Cleanup (optional)
+   - docker compose down
+   - docker volume rm comfysetuper_comfy_workspace
+
+Notes for Copilot agent:
+- Do not reinstall torch unless explicitly needed.
+- Keep line endings LF and UTF-8 without BOM in shell files.
+- If ComfyUI adds new python deps, sync core deps first (excluding torch packages).
