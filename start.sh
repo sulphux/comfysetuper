@@ -307,6 +307,24 @@ fi
 EMBEDDED_PYTHON="$VENV_DIR/bin/python"
 cd "$COMFY_DIR"
 
+# Keep existing installs in sync with latest ComfyUI runtime deps
+# (e.g. alembic/sqlalchemy required by newer ComfyUI releases).
+log "${YELLOW}Syncing ComfyUI requirements before start...${RESET}"
+if [ -f "$COMFY_DIR/requirements.txt" ]; then
+    if ! "$EMBEDDED_PYTHON" -m pip install \
+        -r "$COMFY_DIR/requirements.txt" \
+        --disable-pip-version-check \
+        --root-user-action=ignore \
+        --no-cache-dir \
+        >> "$LOG" 2>&1; then
+        log "${RED}✗ Failed to sync ComfyUI requirements. Check: $LOG${RESET}"
+        exit 1
+    fi
+    ok "ComfyUI requirements synced"
+else
+    warn "ComfyUI requirements.txt missing at $COMFY_DIR"
+fi
+
 log ""
 log "${GREEN}Starting ComfyUI on 0.0.0.0:8188${RESET}"
 log "Access: RunPod → Connect → HTTP Service → Port 8188"
