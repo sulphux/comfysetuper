@@ -59,7 +59,7 @@ When modifying JSON directly:
 
 ## RunPod deployment (`start.sh`)
 
-The repo includes `start.sh` — a bash auto-installer targeting RunPod with an RTX 4090.
+The repo includes `start.sh` — a bash auto-installer **and** ComfyUI launcher in one script (it installs on first run, then always starts ComfyUI).
 
 **What it installs on first run:**
 - Python 3.12 (required — custom wheels are `cp312` only)
@@ -73,11 +73,44 @@ The repo includes `start.sh` — a bash auto-installer targeting RunPod with an 
 - Request HuggingFace access at `https://huggingface.co/facebook/dinov3-vitl16-pretrain-lvd1689m`
 - Network Volume ≥50 GB mounted at `/workspace`
 
-**Critical constraint:** The Linux wheels in this repo are `cp312` only. Any Python version other than 3.12 will fail at the wheel install step.
+**Critical constraints:**
+- The Linux wheels in this repo are `cp312` only — Python 3.12 is required.
+- Do **not** reinstall torch unless explicitly needed; every startup syncs only non-torch ComfyUI deps to avoid multi-GB CUDA wheel re-downloads.
+
+**Reinstall / upgrade mechanism:**
+- First-run detection uses `$WORKSPACE/.comfy_installed_v3`. The script skips setup if this flag exists.
+- To force a full reinstall after major changes, bump the `INSTALL_FLAG` variable to a new version string (e.g., `.comfy_installed_v4`).
+- To force a full dependency sync on startup without triggering a full reinstall: `COMFY_FULL_REQ_SYNC=1 ./start.sh`
+
+**Adding a new custom node:**
+Use the `get_node <GIT_URL> <FOLDER_NAME>` pattern already in `start.sh`. This clones the repo and installs its `requirements.txt` and `install.py` automatically.
 
 ## Local Docker/WSL test mode
 
-- Use `Dockerfile` + `docker-compose.yml` from repo root to run an Ubuntu 22.04 GPU container.
-- Start with `docker compose up -d --build` and enter with `docker exec -it comfy-test bash`.
-- Use `/workspace` as persistent volume inside container (mirrors RunPod workflow).
-- Follow `AGENT_INSTRUCTIONS.txt` for the exact validation sequence.
+- The `Dockerfile` is a **CPU-only base image** (Ubuntu 22.04 + Python + GitHub CLI). GPU access comes from `gpus: all` in `docker-compose.yml`, which requires NVIDIA Container Toolkit on the host.
+- `HF_TOKEN` is forwarded from the host environment (or a `.env` file) via the compose `environment` block.
+- On first `docker compose up`, the repo is copied from the read-only `/seed-repo` mount into `/workspace/comfysetuper`.
+
+**Validation sequence** (from `AGENT_INSTRUCTIONS.txt`):
+```bash
+docker compose up -d --build
+docker exec -it comfy-test bash
+nvidia-smi                          # must succeed before proceeding
+export HF_TOKEN="<your_token>"
+cd /workspace/comfysetuper && ./start.sh
+# Watch for: "Starting ComfyUI on 0.0.0.0:8188"
+# On failure: tail -n 200 /workspace/comfy_setup.log
+```
+
+**Persistence check:** Exit container, run `docker compose restart comfy-test`, re-enter and re-run `./start.sh`. Expected: fast startup with no reinstall.
+
+**Cleanup:**
+```bash
+docker compose down
+docker volume rm comfysetuper_comfy_workspace
+```
+
+## Shell script conventions
+
+- Shell files (`start.sh`) must use **LF line endings and UTF-8 without BOM**.
+- When ComfyUI adds new Python deps, sync core deps first by filtering out `torch`/`torchvision`/`torchaudio` lines — never trigger a full torch reinstall unless the CUDA version changes.

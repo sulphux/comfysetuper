@@ -29,6 +29,10 @@ RUN mkdir -p -m 755 /etc/apt/keyrings \
     && apt-get install -y --no-install-recommends gh \
     && rm -rf /var/lib/apt/lists/*
 
+# GitHub Copilot CLI
+RUN curl -fsSL https://gh.io/copilot-install | bash \
+    && copilot --version
+
 WORKDIR /workspace
 
 CMD ["/bin/bash"]
